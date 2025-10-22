@@ -1,42 +1,22 @@
 apiVersion: tekton.dev/v1beta1
-kind: Pipeline
+kind: Task
 metadata:
-  name: microservice-cd-pipeline
+  name: nose
 spec:
+  workspaces:
+    - name: source
   params:
-    - name: IMAGE
+    - name: args
+      description: Arguments to pass to nose
       type: string
-      description: Target image to build and push
-    - name: DEPLOYMENT_NAME
-      type: string
-      description: Deployment to rollout
-    - name: NAMESPACE
-      type: string
-      description: OpenShift namespace/project
-  tasks:
-    - name: run-lint
-      taskRef:
-        name: lint-task
-
-    - name: run-test
-      taskRef:
-        name: test-task
-      runAfter: [run-lint]
-
-    - name: build-image
-      taskRef:
-        name: buildah-build-task
-      runAfter: [run-test]
-      params:
-        - name: IMAGE
-          value: "$(params.IMAGE)"
-
-    - name: deploy
-      taskRef:
-        name: oc-deploy-task
-      runAfter: [build-image]
-      params:
-        - name: DEPLOYMENT_NAME
-          value: "$(params.DEPLOYMENT_NAME)"
-        - name: NAMESPACE
-          value: "$(params.NAMESPACE)"
+      default: "-v"
+  steps:
+    - name: nosetests
+      image: python:3.9-slim
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+        python -m pip install --upgrade pip wheel
+        pip install -r requirements.txt
+        nosetests $(params.args)
