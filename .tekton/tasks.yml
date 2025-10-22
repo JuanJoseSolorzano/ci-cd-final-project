@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: microservice-cd-pipeline
+spec:
+  params:
+    - name: IMAGE
+      type: string
+      description: Target image to build and push
+    - name: DEPLOYMENT_NAME
+      type: string
+      description: Deployment to rollout
+    - name: NAMESPACE
+      type: string
+      description: OpenShift namespace/project
+  tasks:
+    - name: run-lint
+      taskRef:
+        name: lint-task
+
+    - name: run-test
+      taskRef:
+        name: test-task
+      runAfter: [run-lint]
+
+    - name: build-image
+      taskRef:
+        name: buildah-build-task
+      runAfter: [run-test]
+      params:
+        - name: IMAGE
+          value: "$(params.IMAGE)"
+
+    - name: deploy
+      taskRef:
+        name: oc-deploy-task
+      runAfter: [build-image]
+      params:
+        - name: DEPLOYMENT_NAME
+          value: "$(params.DEPLOYMENT_NAME)"
+        - name: NAMESPACE
+          value: "$(params.NAMESPACE)"
